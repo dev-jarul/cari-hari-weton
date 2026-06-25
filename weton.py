@@ -1,4 +1,5 @@
 import streamlit as st
+import datetime as dt
 from datetime import datetime, timedelta
 
 # Setup halaman utama web app agar responsif di HP
@@ -76,10 +77,20 @@ def cari_hari_baik_nahas(hari_lahir, pasaran_lahir):
 with st.container():
     st.subheader("📅 Data Kelahiran")
     
-    # Input tanggal bawaan widget kalender (Default diset ke hari ini)
-    tgl_pilih = st.date_input("Pilih Tanggal Lahir Anda:", datetime.now())
+    # Pengaturan Range Kalender 1920 - 2040 dan Format DD/MM/YYYY
+    min_date = dt.date(1920, 1, 1)
+    max_date = dt.date(2040, 12, 31)
+    default_date = dt.date(2000, 1, 1)  # Di-set ke tahun 2000 agar mudah digulir ke atas/bawah
     
-    # Input waktu siang/malam (Mengganti input teks manual menjadi tombol pilihan)
+    tgl_pilih = st.date_input(
+        "Pilih Tanggal Lahir Anda:",
+        value=default_date,
+        min_value=min_date,
+        max_value=max_date,
+        format="DD/MM/YYYY"
+    )
+    
+    # Input waktu siang/malam
     waktu = st.radio(
         "Kapan Waktu Jam Kelahiran Anda?",
         ("Siang / Pagi / Sore (06.00 - 17.59 WIB)", "Malam Hari (Setelah Magrib / 18.00 - 05.59 WIB)")
@@ -91,7 +102,7 @@ st.markdown("---")
 if tgl_pilih:
     # Salin objek datetime dasar
     tanggal_lahir = datetime.combine(tgl_pilih, datetime.min.time())
-    tanggal_asli_str = tgl_pilih.strftime("%d-%m-%Y")
+    tanggal_asli_str = tgl_pilih.strftime("%d/%m/%Y")
 
     # Jalankan logika pergeseran hari Jawa untuk kelahiran malam hari
     if "Malam Hari" in waktu:
@@ -120,7 +131,7 @@ if tgl_pilih:
     watak_data = PRIMBON_WATAK_DETAIL.get(weton_lengkap, {"positif": "Belum terdaftar.", "negatif": "Belum terdaftar."})
     daftar_nahas, daftar_baik = cari_hari_baik_nahas(hari_weton, pasaran_weton)
 
-    # --- TAMPILAN OUTPUT FINAL (Sangat Rapi di HP) ---
+    # --- TAMPILAN OUTPUT FINAL ---
     st.subheader("📊 Hasil Analisis Primbon")
     
     # Ringkasan data utama
@@ -136,7 +147,7 @@ if tgl_pilih:
         
     st.markdown("---")
     
-    # Bagian Watak & Karakter menggunakan Expander agar hemat ruang layar HP
+    # Bagian Watak & Karakter menggunakan Expander
     with st.expander("🔮 Watak & Tabiat (Menurut Primbon)", expanded=True):
         st.markdown("##### 🟩 Sisi Positif / Kelebihan:")
         st.write(watak_data['positif'])
