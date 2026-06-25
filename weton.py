@@ -4,25 +4,22 @@ from datetime import datetime, timedelta
 
 # Setup halaman utama web app agar responsif di HP
 st.set_page_config(
-    page_title="Prediksi Weton & Watak Lahir", 
+    page_title="Prediksi Weton & Jodoh", 
     page_icon="🔮", 
     layout="centered"
 )
 
 # Judul Aplikasi Utama
-st.title("🔮 Primbon Digital: Cari Hari Kelahiran & Weton")
-st.markdown("Cek weton, neptu, watak, serta hari baik/nahas Anda berdasarkan kalender primbon Jawa kuno.")
+st.title("🔮 Primbon Digital: Weton & Cek Jodoh")
+st.markdown("Cek weton, watak lahir, hari peruntungan, hingga kecocokan jodoh Anda berdasarkan kalender Jawa kuno.")
 st.markdown("---")
 
-# 1. Nilai Neptu Hari dan Pasaran
+# --- DATABASE & LOGIKA DASAR ---
 NEPTU_HARI = {"Senin": 4, "Selasa": 3, "Rabu": 7, "Kamis": 8, "Jumat": 6, "Sabtu": 9, "Minggu": 5}
 NEPTU_PASARAN = {"Legi": 5, "Pahing": 9, "Pon": 7, "Wage": 4, "Kliwon": 8}
-
-# Daftar Hari dan Pasaran untuk Perhitungan Rotasi
 DAFTAR_HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
 DAFTAR_PASARAN = ["Legi", "Pahing", "Pon", "Wage", "Kliwon"]
 
-# 2. Database Watak & Tabiat Detail
 PRIMBON_WATAK_DETAIL = {
     "Senin Legi": {"positif": "Tegas, mandiri, suka berargumen yang sehat, berpegang teguh pada prinsip, serta memiliki hati yang lembut dan mudah iba.", "negatif": "Cenderung keras kepala, sulit menerima masukan, dan suka mencampuri urusan orang lain."},
     "Senin Pahing": {"positif": "Pekerja keras, jujur, sangat optimis dalam menatap masa depan, dan memiliki cita-cita yang tinggi.", "negatif": "Cenderung kaku dalam bergaul, mudah tersinggung jika dikritik, dan suka memendam masalah."},
@@ -61,105 +58,152 @@ PRIMBON_WATAK_DETAIL = {
     "Minggu Kliwon": {"positif": "Sopan, pandai berbicara, berjiwa pemimpin, murah hati, dan pandai bergaul.", "negatif": "Suka membantah, gampang tersinggung, dan sering tidak sabaran."}
 }
 
+# Database Hasil Jodoh Pembagian 8
+PRIMBON_JODOH = {
+    1: {"status": "PEGAT (💔)", "arti": "Menurut perhitungan, hubungan cenderung sering menemui masalah di kemudian hari, baik karena masalah sepele, ekonomi, maupun faktor eksternal. Diperlukan kesabaran ekstra tinggi dan komunikasi yang kuat agar hubungan tetap kokoh."},
+    2: {"status": "RATU (👑)", "arti": "Luar biasa! Pasangan ini dianggap sebagai jodoh sejati. Kehidupan rumah tangga akan sangat harmonis, disegani oleh tetangga dan kerabat, serta penuh ketenteraman."},
+    3: {"status": "JODOH (💖)", "arti": "Sangat cocok! Pasangan ini diprediksi bisa saling menerima kelebihan dan kekurangan masing-masing. Rumah tangga berjalan rukun, adem ayem, dan awet sampai tua."},
+    4: {"status": "TOPO (⛰️)", "arti": "Di awal pernikahan, rumah tangga kemungkinan akan mengalami pasang surut atau rintangan terlebih dahulu (misal penyesuaian sifat atau ekonomi). Namun jangan khawatir, seiring berjalannya waktu hubungan akan berakhir bahagia dan sukses."},
+    5: {"status": "TINARI (💰)", "arti": "Penuh keberuntungan rezeki! Pasangan ini diprediksi akan mudah mencari nafkah, sering mendapat keberuntungan mengejutkan, dan hidupnya berkecukupan."},
+    6: {"status": "PADANAN (⚖️)", "arti": "Rumah tangga akan sering diuji oleh percekcokan atau perbedaan pendapat yang cukup intens. Namun selama kedua pihak mau mengalah dan menurunkan ego, hubungan bisa tetap dipertahankan dengan baik."},
+    7: {"status": "SUJANAN (🔥)", "arti": "Harus berhati-hati terhadap potensi konflik atau rasa cemburu yang berlebihan dalam rumah tangga. Kunci keharmonisan pasangan ini adalah keterbukaan total dan menjaga kepercayaan satu sama lain."},
+    0: {"status": "PESTHI (🕊️)", "arti": "Sangat damai! Rumah tangga diprediksi berjalan lempeng, rukun, minim konflik besar, dan dinaungi kebahagiaan yang konsisten sepanjang perjalanan pernikahan."}
+}
+
+def hitung_weton_core(tgl, waktu_malam):
+    tanggal_lahir = datetime.combine(tgl, datetime.min.time())
+    if waktu_malam:
+        tanggal_lahir += timedelta(days=1)
+    
+    tanggal_patokan = datetime(1900, 1, 1)
+    selisih_hari = (tanggal_lahir - tanggal_patokan).days
+    
+    idx_h = (0 + selisih_hari) % 7
+    idx_p = (1 + selisih_hari) % 5
+    
+    hari = DAFTAR_HARI[idx_h]
+    pasaran = DAFTAR_PASARAN[idx_p]
+    
+    return hari, pasaran, NEPTU_HARI[hari], NEPTU_PASARAN[pasaran]
+
 def cari_hari_baik_nahas(hari_lahir, pasaran_lahir):
     idx_h = DAFTAR_HARI.index(hari_lahir)
     idx_p = DAFTAR_PASARAN.index(pasaran_lahir)
     
     hari_nahas_1 = f"{DAFTAR_HARI[(idx_h + 3) % 7]} {DAFTAR_PASARAN[(idx_p + 3) % 5]}"
     hari_nahas_2 = f"{DAFTAR_HARI[(idx_h + 4) % 7]} {DAFTAR_PASARAN[(idx_p + 4) % 5]}"
-    
     hari_baik_1 = f"{DAFTAR_HARI[(idx_h + 1) % 7]} {DAFTAR_PASARAN[(idx_p + 2) % 5]}"
     hari_baik_2 = f"{DAFTAR_HARI[(idx_h + 2) % 7]} {DAFTAR_PASARAN[(idx_p + 0) % 5]}"
     
     return [hari_nahas_1, hari_nahas_2], [hari_baik_1, hari_baik_2]
 
-# --- AREA INPUT FORM (Ramah Tampilan Mobile/HP) ---
-with st.container():
-    st.subheader("📅 Data Kelahiran")
+# --- MENU NAVIGASI UTAMA ---
+menu = st.tabs(["👤 Cek Weton Pribadi", "👩‍❤️‍👨 Cek Kecocokan Jodoh"])
+
+min_date = dt.date(1920, 1, 1)
+max_date = dt.date(2040, 12, 31)
+
+# ================= TAB 1: CEK WETON PRIBADI =================
+with menu[0]:
+    st.subheader("📅 Data Kelahiran Anda")
+    tgl_pilih = st.date_input("Pilih Tanggal Lahir Anda:", value=dt.date(2000, 1, 1), min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="pribadi_tgl")
+    waktu = st.radio("Kapan Waktu Jam Kelahiran Anda?", ("Siang / Pagi / Sore (06.00 - 17.59 WIB)", "Malam Hari (Setelah Magrib / 18.00 - 05.59 WIB)"), key="pribadi_waktu")
     
-    # Pengaturan Range Kalender 1920 - 2040 dan Format DD/MM/YYYY
-    min_date = dt.date(1920, 1, 1)
-    max_date = dt.date(2040, 12, 31)
-    default_date = dt.date(2000, 1, 1)  # Di-set ke tahun 2000 agar mudah digulir ke atas/bawah
-    
-    tgl_pilih = st.date_input(
-        "Pilih Tanggal Lahir Anda:",
-        value=default_date,
-        min_value=min_date,
-        max_value=max_date,
-        format="DD/MM/YYYY"
-    )
-    
-    # Input waktu siang/malam
-    waktu = st.radio(
-        "Kapan Waktu Jam Kelahiran Anda?",
-        ("Siang / Pagi / Sore (06.00 - 17.59 WIB)", "Malam Hari (Setelah Magrib / 18.00 - 05.59 WIB)")
-    )
-
-st.markdown("---")
-
-# --- PROSES PERHITUNGAN LOGIKA ---
-if tgl_pilih:
-    # Salin objek datetime dasar
-    tanggal_lahir = datetime.combine(tgl_pilih, datetime.min.time())
-    tanggal_asli_str = tgl_pilih.strftime("%d/%m/%Y")
-
-    # Jalankan logika pergeseran hari Jawa untuk kelahiran malam hari
-    if "Malam Hari" in waktu:
-        tanggal_lahir = tanggal_lahir + timedelta(days=1)
-        keterangan_waktu = "Malam (Masuk Hari Berikutnya)"
-    else:
-        keterangan_waktu = "Siang"
-
-    # Algoritma Patokan 1 Januari 1900 asli milik Anda
-    tanggal_patokan = datetime(1900, 1, 1)
-    selisih_hari = (tanggal_lahir - tanggal_patokan).days
-
-    index_hari_baru = (0 + selisih_hari) % 7
-    index_pasaran_baru = (1 + selisih_hari) % 5
-
-    hari_weton = DAFTAR_HARI[index_hari_baru]
-    pasaran_weton = DAFTAR_PASARAN[index_pasaran_baru]
-    weton_lengkap = f"{hari_weton} {pasaran_weton}"
-
-    # Hitung Jumlah Neptu
-    n_hari = NEPTU_HARI[hari_weton]
-    n_pasaran = NEPTU_PASARAN[pasaran_weton]
-    total_neptu = n_hari + n_pasaran
-
-    # Ekstrak data watak
-    watak_data = PRIMBON_WATAK_DETAIL.get(weton_lengkap, {"positif": "Belum terdaftar.", "negatif": "Belum terdaftar."})
-    daftar_nahas, daftar_baik = cari_hari_baik_nahas(hari_weton, pasaran_weton)
-
-    # --- TAMPILAN OUTPUT FINAL ---
-    st.subheader("📊 Hasil Analisis Primbon")
-    
-    # Ringkasan data utama
-    st.success(f"**Weton Anda: {weton_lengkap}**")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric(label="Tanggal Input", value=tanggal_asli_str)
-        st.write(f"⏱️ **Waktu:** {keterangan_waktu}")
-    with col2:
-        st.metric(label="Total Angka Neptu", value=str(total_neptu))
-        st.write(f"🔢 **Detail:** {hari_weton} ({n_hari}) + {pasaran_weton} ({n_pasaran})")
-        
     st.markdown("---")
     
-    # Bagian Watak & Karakter menggunakan Expander
-    with st.expander("🔮 Watak & Tabiat (Menurut Primbon)", expanded=True):
-        st.markdown("##### 🟩 Sisi Positif / Kelebihan:")
-        st.write(watak_data['positif'])
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("##### 🟥 Sisi Negatif / Kekurangan:")
-        st.write(watak_data['negatif'])
+    if tgl_pilih:
+        malam_hari = "Malam Hari" in waktu
+        h_weton, p_weton, n_h, n_p = hitung_weton_core(tgl_pilih, malam_hari)
+        weton_lengkap = f"{h_weton} {p_weton}"
+        total_neptu = n_h + n_p
+        
+        # Hitung Countdown Selapanan (35 hari sekali)
+        patokan_weton = datetime(1900, 1, 1) + timedelta(days=DAFTAR_HARI.index(h_weton) + (DAFTAR_PASARAN.index(p_weton) * 7))
+        hari_ini = datetime.now()
+        selisih_hari_ini = (hari_ini - datetime(1900,1,1)).days
+        sisa_hari_ke_weton = (n_h + n_p) # dummy offset logic simplify:
+        
+        # Perhitungan akurat sisa hari selapanan
+        idx_hari_kini = (0 + selisih_hari_ini) % 7
+        idx_pas_kini = (1 + selisih_hari_ini) % 5
+        
+        target_h = DAFTAR_HARI.index(h_weton)
+        target_p = DAFTAR_PASARAN.index(p_weton)
+        
+        hari_perlu = (target_h - idx_hari_kini) % 7
+        pasar_perlu = (target_p - idx_pas_kini) % 5
+        
+        # Cari angka kelipatan terkecil (KPK 7 dan 5 = 35)
+        sisa_hari_selapan = 0
+        for i in range(36):
+            if (idx_hari_kini + i) % 7 == target_h and (idx_pas_kini + i) % 5 == target_p:
+                sisa_hari_selapan = i
+                break
+        if sisa_hari_selapan == 0:
+            sisa_hari_selapan = 35
 
-    # Bagian Peruntungan Kalender Jawa
-    st.markdown("### 📅 Kalender Peruntungan Jawa")
+        st.subheader("📊 Hasil Analisis Primbon")
+        st.success(f"**Weton Anda: {weton_lengkap}**")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(label="Tanggal Input", value=tgl_pilih.strftime("%d/%m/%Y"))
+            st.info(f"🎂 **{sisa_hari_selapan} hari lagi** menuju Hari Ulang Tahun Weton (*Selapanan*) Anda.")
+        with col2:
+            st.metric(label="Total Angka Neptu", value=str(total_neptu))
+            st.write(f"🔢 **Detail:** {h_weton} ({n_h}) + {p_weton} ({n_p})")
+            
+        st.markdown("---")
+        
+        with st.expander("🔮 Watak & Tabiat (Menurut Primbon)", expanded=True):
+            watak_data = PRIMBON_WATAK_DETAIL.get(weton_lengkap, {"positif": "Belum terdaftar.", "negatif": "Belum terdaftar."})
+            st.markdown("##### 🟩 Sisi Positif / Kelebihan:")
+            st.write(watak_data['positif'])
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("##### 🟥 Sisi Negatif / Kekurangan:")
+            st.write(watak_data['negatif'])
+
+        st.markdown("### 📅 Kalender Peruntungan Jawa")
+        daftar_nahas, daftar_baik = cari_hari_baik_nahas(h_weton, p_weton)
+        st.error(f"⚠️ **Hari Nahas Anda:** {daftar_nahas[0]} & {daftar_nahas[1]}")
+        st.info(f"✨ **Hari Baik Anda:** {daftar_baik[0]} & {daftar_baik[1]}")
+
+# ================= TAB 2: CEK KECOCOKAN JODOH =================
+with menu[1]:
+    st.subheader("👩‍❤️‍👨 Analisis Keserasian Pasangan")
+    st.markdown("Masukkan tanggal lahir Anda dan Pasangan Anda untuk melihat tingkat kecocokan berdasarkan kitab Primbon Jawa.")
     
-    st.error(f"⚠️ **Hari Nahas Anda:** {daftar_nahas[0]} & {daftar_nahas[1]}")
-    st.caption("Sebaiknya hindari hari-hari ini untuk mengadakan urusan besar, transaksi penting, maupun hajat pernikahan.")
-    
-    st.info(f"✨ **Hari Baik Anda:** {daftar_baik[0]} & {daftar_baik[1]}")
-    st.caption("Sangat baik digunakan untuk memulai usaha baru, melakukan perjalanan jauh, atau membuka hajat acara.")
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        st.markdown("### **Data Anda:**")
+        tgl_p1 = st.date_input("Tanggal Lahir Anda:", value=dt.date(2000, 1, 1), min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="jodoh_tgl1")
+        waktu_p1 = st.radio("Waktu Lahir Anda:", ("Siang", "Malam (Habis Magrib)"), key="jodoh_waktu1")
+        
+    with col_p2:
+        st.markdown("### **Data Pasangan:**")
+        tgl_p2 = st.date_input("Tanggal Lahir Pasangan:", value=dt.date(2000, 1, 1), min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="jodoh_tgl2")
+        waktu_p2 = st.radio("Waktu Lahir Pasangan:", ("Siang", "Malam (Habis Magrib)"), key="jodoh_waktu2")
+        
+    if st.button("🔮 Hitung Keserasian Jodoh", type="primary", use_container_width=True):
+        # Hitung Weton ke-1
+        h1, p1, n_h1, n_p1 = hitung_weton_core(tgl_p1, "Malam" in waktu_p1)
+        nep1 = n_h1 + n_p1
+        
+        # Hitung Weton ke-2
+        h2, p2, n_h2, n_p2 = hitung_weton_core(tgl_p2, "Malam" in waktu_p2)
+        nep2 = n_h2 + n_p2
+        
+        # Logika Pembagian Jodoh Pakem Sisa 8
+        total_neptu_jodoh = nep1 + nep2
+        sisa_jodoh = total_neptu_jodoh % 8
+        hasil_ramalan = PRIMBON_JODOH[sisa_jodoh]
+        
+        st.markdown("---")
+        st.subheader("💘 Hasil Perhitungan Jodoh")
+        
+        # Tampilkan perbandingan ringkas
+        st.info(f"**Weton Anda:** {h1} {p1} (Neptu {nep1})   |   **Weton Pasangan:** {h2} {p2} (Neptu {nep2})")
+        
+        # Tampilkan Status Utama
+        st.warning(f"### Kategori Hasil: {hasil_ramalan['status']}")
+        st.write(hasil_ramalan['arti'])
