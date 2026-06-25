@@ -65,7 +65,7 @@ PRIMBON_JODOH = {
     3: {"status": "JODOH (💖)", "arti": "Sangat cocok! Pasangan ini diprediksi bisa saling menerima kelebihan dan kekurangan masing-masing. Rumah tangga berjalan rukun, adem ayem, dan awet sampai tua."},
     4: {"status": "TOPO (⛰️)", "arti": "Di awal pernikahan, rumah tangga kemungkinan akan mengalami pasang surut atau rintangan terlebih dahulu (misal penyesuaian sifat atau ekonomi). Namun jangan khawatir, seiring berjalannya waktu hubungan akan berakhir bahagia dan sukses."},
     5: {"status": "TINARI (💰)", "arti": "Penuh keberuntungan rezeki! Pasangan ini diprediksi akan mudah mencari nafkah, sering mendapat keberuntungan mengejutkan, dan hidupnya berkecukupan."},
-    6: {"status": "PADANAN (⚖️)", "arti": "Rumah tangga akan sering diuji oleh percekcokan atau perbedaan pendapat yang cukup intens. Namun selama kedua pihak mau mengalah dan menurunkan ego, hubungan bisa tetap dipertahankan dengan baik."},
+    6: {"status": "PADANAN (⚖️)", "arti": "Rumah tangga akan sering diuji oleh percekcokan atau perbedaan pendapat yang cukup intens. Namun selama kedua pihak mau mengalah dan menurunkan ego, hubungan bisa tetap dipertahaman dengan baik."},
     7: {"status": "SUJANAN (🔥)", "arti": "Harus berhati-hati terhadap potensi konflik atau rasa cemburu yang berlebihan dalam rumah tangga. Kunci keharmonisan pasangan ini adalah keterbukaan total dan menjaga kepercayaan satu sama lain."},
     0: {"status": "PESTHI (🕊️)", "arti": "Sangat damai! Rumah tangga diprediksi berjalan lempeng, rukun, minim konflik besar, dan dinaungi kebahagiaan yang konsisten sepanjang perjalanan pernikahan."}
 }
@@ -117,7 +117,7 @@ with menu[0]:
         weton_lengkap = f"{h_weton} {p_weton}"
         total_neptu = n_h + n_p
         
-        # Perhitungan akurat sisa hari selapanan
+        # Perhitungan sisa hari selapanan
         hari_ini = datetime.now()
         selisih_hari_ini = (hari_ini - datetime(1900, 1, 1)).days
         idx_hari_kini = (0 + selisih_hari_ini) % 7
@@ -148,7 +148,6 @@ with menu[0]:
         st.markdown("---")
         st.markdown("### 📊 Visualisasi Karakter & Watak Lahir")
         
-        # --- FITUR VISUALISASI GRAFIK RADAR ---
         karakter_skor = {
             "Kepemimpinan": 60 + ((n_h * 5) % 40),
             "Kesabaran": 55 + ((n_p * 6) % 45),
@@ -173,9 +172,7 @@ with menu[0]:
         ))
         
         fig.update_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, range=[0, 100])
-            ),
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
             showlegend=False,
             margin=dict(l=40, r=40, t=20, b=20),
             height=320
@@ -183,8 +180,8 @@ with menu[0]:
         
         st.plotly_chart(fig, use_container_width=True)
 
+        watak_data = PRIMBON_WATAK_DETAIL.get(weton_lengkap, {"positif": "Belum terdaftar.", "negatif": "Belum terdaftar."})
         with st.expander("🔮 Detail Watak & Tabiat (Menurut Kitab Primbon)", expanded=False):
-            watak_data = PRIMBON_WATAK_DETAIL.get(weton_lengkap, {"positif": "Belum terdaftar.", "negatif": "Belum terdaftar."})
             st.markdown("##### 🟩 Sisi Positif / Kelebihan:")
             st.write(watak_data['positif'])
             st.markdown("<br>", unsafe_allow_html=True)
@@ -198,52 +195,147 @@ with menu[0]:
         
         st.markdown("---")
         st.markdown("### 📜 Simpan Hasil Analisis")
-        st.markdown("Unduh sertifikat ringkasan weton Anda untuk disimpan di HP atau dibagikan ke media sosial.")
+        st.markdown("Klik tombol di bawah untuk mencetak atau menyimpan dokumen hasil ramalan weton resmi Anda dalam format PDF.")
         
-        # --- FITUR DOWNLOAD SERTIFIKAT DIGITAL ---
-        isi_sertifikat = f"""==================================================
- 🔮 SERTIFIKAT DIGITAL PRIMBON JAWA MODERN 🔮
-==================================================
-
-Nama Pengguna  : Pengunjung Primbon Digital
-Tanggal Lahir  : {tgl_pilih.strftime('%d/%m/%Y')}
-Waktu Lahir    : {waktu}
-
---------------------------------------------------
- Hasil Perhitungan Weton:
---------------------------------------------------
- HARI LURUH    : {h_weton} ({n_h})
- PASARAN       : {p_weton} ({n_p})
- WETON UTAMA   : {weton_lengkap.upper()}
- TOTAL NEPTU   : {total_neptu}
-
---------------------------------------------------
- Nilai Potensi Karakter (Skala 1-100):
---------------------------------------------------
- * Kepemimpinan      : {karakter_skor['Kepemimpinan']}/100
- * Kesabaran         : {karakter_skor['Kesabaran']}/100
- * Kejujuran         : {karakter_skor['Kejujuran']}/100
- * Keuangan/Rezeki   : {karakter_skor['Keuangan / Rezeki']}/100
- * Kecerdasan Emosi  : {karakter_skor['Kecerdasan Emosi']}/100
-
---------------------------------------------------
- Garis Panduan Hari:
---------------------------------------------------
- ✨ Hari Baik    : {daftar_baik[0]} & {daftar_baik[1]}
- ⚠️ Hari Nahas   : {daftar_nahas[0]} & {daftar_nahas[1]}
-
-==================================================
-   Aplikasi Dibuat oleh JARWOISME.DEV-APP  
-==================================================
-"""
-        st.download_button(
-            label="📥 Download Sertifikat Weton (.txt)",
-            data=isi_sertifikat,
-            file_name=f"Sertifikat_Weton_{weton_lengkap.replace(' ', '_')}.txt",
-            mime="text/plain",
-            use_container_width=True,
-            type="primary"
-        )
+        # --- TEMPLATE HTML/CSS PADA SERTIFIKAT DENGAN WATERMARK / TANDA TANGAN ---
+        html_sertifikat = f"""
+        <html>
+        <head>
+        <style>
+            @media print {{
+                body {{ background: white; color: black; }}
+                .no-print {{ display: none !important; }}
+            }}
+            .cert-container {{
+                border: 6px double #b58900;
+                padding: 30px;
+                background-color: #fdfaf2;
+                font-family: 'Georgia', serif;
+                color: #333;
+                text-align: center;
+                border-radius: 10px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                margin: 20px auto;
+                max-width: 600px;
+                position: relative;
+            }}
+            .cert-title {{
+                font-size: 24px;
+                font-weight: bold;
+                color: #856404;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                margin-bottom: 5px;
+            }}
+            .cert-subtitle {{
+                font-size: 13px;
+                font-style: italic;
+                color: #666;
+                margin-bottom: 25px;
+            }}
+            .cert-table {{
+                width: 100%;
+                margin: 15px 0;
+                border-collapse: collapse;
+            }}
+            .cert-table td {{
+                padding: 8px;
+                text-align: left;
+                font-size: 14px;
+                border-bottom: 1px dashed #ddd;
+            }}
+            .cert-table td.label {{
+                font-weight: bold;
+                color: #555;
+                width: 40%;
+            }}
+            .badge-weton {{
+                font-size: 20px;
+                font-weight: bold;
+                color: #fff;
+                background-color: #856404;
+                padding: 10px;
+                display: inline-block;
+                margin: 15px 0;
+                border-radius: 5px;
+                letter-spacing: 1px;
+            }}
+            .watermark-container {{
+                margin-top: 35px;
+                padding-top: 15px;
+                border-top: 1px dashed #b58900;
+                text-align: right;
+            }}
+            .watermark-text {{
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 14px;
+                font-weight: bold;
+                color: #856404;
+                letter-spacing: 2px;
+                opacity: 0.85;
+            }}
+            .watermark-sub {{
+                font-size: 10px;
+                color: #888;
+                letter-spacing: 1px;
+                font-family: sans-serif;
+            }}
+            .print-btn {{
+                background-color: #28a745;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                font-size: 16px;
+                font-weight: bold;
+                border-radius: 5px;
+                cursor: pointer;
+                width: 100%;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                transition: 0.3s;
+            }}
+            .print-btn:hover {{
+                background-color: #218838;
+            }}
+        </style>
+        </head>
+        <body>
+            <div class="cert-container" id="printable-area">
+                <div class="cert-title">📜 Sertifikat Primbon Jawa 📜</div>
+                <div class="cert-subtitle">Hasil Analisis Perhitungan Weton Digital</div>
+                
+                <table class="cert-table">
+                    <tr><td class="label">Tanggal Lahir</td><td>: {tgl_pilih.strftime('%d/%m/%Y')}</td></tr>
+                    <tr><td class="label">Waktu Kelahiran</td><td>: {waktu.split('(')[0]}</td></tr>
+                </table>
+                
+                <div class="badge-weton">{weton_lengkap.upper()}</div>
+                
+                <table class="cert-table">
+                    <tr><td class="label">Jumlah Neptu</td><td>: <b>{total_neptu}</b> (Hari {n_h} + Pasaran {n_p})</td></tr>
+                    <tr><td class="label">Kepemimpinan</td><td>: {karakter_skor['Kepemimpinan']}/100</td></tr>
+                    <tr><td class="label">Kesabaran</td><td>: {karakter_skor['Kesabaran']}/100</td></tr>
+                    <tr><td class="label">Kejujuran</td><td>: {karakter_skor['Kejujuran']}/100</td></tr>
+                    <tr><td class="label">Keuangan / Rezeki</td><td>: {karakter_skor['Keuangan / Rezeki']}/100</td></tr>
+                    <tr><td class="label">✨ Hari Baik</td><td>: {daftar_baik[0]} & {daftar_baik[1]}</td></tr>
+                    <tr><td class="label">⚠️ Hari Nahas</td><td>: {daftar_nahas[0]} & {daftar_nahas[1]}</td></tr>
+                </table>
+                
+                <!-- BLOK WATERMARK / SIGNATURE DIGITAL -->
+                <div class="watermark-container">
+                    <div class="watermark-text">✍️ JARULISME.DEV-APP</div>
+                    <div class="watermark-sub">Verified Digital Signature</div>
+                </div>
+                
+                <div class="no-print" style="margin-top: 25px;">
+                    <button class="print-btn" onclick="window.print()">📥 Download / Cetak Sebagai PDF</button>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Tampilkan komponen sertifikat HTML interaktif di Streamlit
+        st.components.v1.html(html_sertifikat, height=620, scrolling=False)
 
 # ================= TAB 2: CEK KECOCOKAN JODOH =================
 with menu[1]:
