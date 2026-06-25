@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime as dt
 from datetime import datetime, timedelta
+import plotly.graph_objects as go
 
 # Setup halaman utama web app agar responsif di HP
 st.set_page_config(
@@ -11,7 +12,7 @@ st.set_page_config(
 
 # Judul Aplikasi Utama
 st.title("🔮 Primbon Digital: Weton & Cek Jodoh")
-st.markdown("Cek weton, watak lahir, hari peruntungan, hingga kecocokan jodoh Anda berdasarkan kalender Jawa kuno.")
+st.markdown("Cek weton, watak lahir, hari peruntungan, grafik karakter, hingga kecocokan jodoh Anda berdasarkan kalender Jawa kuno.")
 st.markdown("---")
 
 # --- DATABASE & LOGIKA DASAR ---
@@ -58,7 +59,6 @@ PRIMBON_WATAK_DETAIL = {
     "Minggu Kliwon": {"positif": "Sopan, pandai berbicara, berjiwa pemimpin, murah hati, dan pandai bergaul.", "negatif": "Suka membantah, gampang tersinggung, dan sering tidak sabaran."}
 }
 
-# Database Hasil Jodoh Pembagian 8
 PRIMBON_JODOH = {
     1: {"status": "PEGAT (💔)", "arti": "Menurut perhitungan, hubungan cenderung sering menemui masalah di kemudian hari, baik karena masalah sepele, ekonomi, maupun faktor eksternal. Diperlukan kesabaran ekstra tinggi dan komunikasi yang kuat agar hubungan tetap kokoh."},
     2: {"status": "RATU (👑)", "arti": "Luar biasa! Pasangan ini dianggap sebagai jodoh sejati. Kehidupan rumah tangga akan sangat harmonis, disegani oleh tetangga dan kerabat, serta penuh ketenteraman."},
@@ -117,23 +117,15 @@ with menu[0]:
         weton_lengkap = f"{h_weton} {p_weton}"
         total_neptu = n_h + n_p
         
-        # Hitung Countdown Selapanan (35 hari sekali)
-        patokan_weton = datetime(1900, 1, 1) + timedelta(days=DAFTAR_HARI.index(h_weton) + (DAFTAR_PASARAN.index(p_weton) * 7))
-        hari_ini = datetime.now()
-        selisih_hari_ini = (hari_ini - datetime(1900,1,1)).days
-        sisa_hari_ke_weton = (n_h + n_p) # dummy offset logic simplify:
-        
         # Perhitungan akurat sisa hari selapanan
+        hari_ini = datetime.now()
+        selisih_hari_ini = (hari_ini - datetime(1900, 1, 1)).days
         idx_hari_kini = (0 + selisih_hari_ini) % 7
         idx_pas_kini = (1 + selisih_hari_ini) % 5
         
         target_h = DAFTAR_HARI.index(h_weton)
         target_p = DAFTAR_PASARAN.index(p_weton)
         
-        hari_perlu = (target_h - idx_hari_kini) % 7
-        pasar_perlu = (target_p - idx_pas_kini) % 5
-        
-        # Cari angka kelipatan terkecil (KPK 7 dan 5 = 35)
         sisa_hari_selapan = 0
         for i in range(36):
             if (idx_hari_kini + i) % 7 == target_h and (idx_pas_kini + i) % 5 == target_p:
@@ -154,8 +146,44 @@ with menu[0]:
             st.write(f"🔢 **Detail:** {h_weton} ({n_h}) + {p_weton} ({n_p})")
             
         st.markdown("---")
+        st.markdown("### 📊 Visualisasi Karakter & Watak Lahir")
         
-        with st.expander("🔮 Watak & Tabiat (Menurut Primbon)", expanded=True):
+        # --- FITUR VISUALISASI GRAFIK RADAR ---
+        karakter_skor = {
+            "Kepemimpinan": 60 + ((n_h * 5) % 40),
+            "Kesabaran": 55 + ((n_p * 6) % 45),
+            "Kejujuran": 65 + (((n_h + n_p) * 2) % 35),
+            "Keuangan / Rezeki": 50 + ((total_neptu * 4) % 50),
+            "Kecerdasan Emosi": 55 + (((n_p - n_h) * 7) % 45)
+        }
+        
+        categories = list(karakter_skor.keys())
+        values = list(karakter_skor.values())
+        values.append(values[0])
+        categories.append(categories[0])
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatterpolar(
+            r=values,
+            theta=categories,
+            fill='toself',
+            fillcolor='rgba(131, 201, 255, 0.4)',
+            line=dict(color='#1f77b4', width=2),
+            name='Potensi Diri'
+        ))
+        
+        fig.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, 100])
+            ),
+            showlegend=False,
+            margin=dict(l=40, r=40, t=20, b=20),
+            height=320
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("🔮 Detail Watak & Tabiat (Menurut Kitab Primbon)", expanded=False):
             watak_data = PRIMBON_WATAK_DETAIL.get(weton_lengkap, {"positif": "Belum terdaftar.", "negatif": "Belum terdaftar."})
             st.markdown("##### 🟩 Sisi Positif / Kelebihan:")
             st.write(watak_data['positif'])
@@ -167,6 +195,55 @@ with menu[0]:
         daftar_nahas, daftar_baik = cari_hari_baik_nahas(h_weton, p_weton)
         st.error(f"⚠️ **Hari Nahas Anda:** {daftar_nahas[0]} & {daftar_nahas[1]}")
         st.info(f"✨ **Hari Baik Anda:** {daftar_baik[0]} & {daftar_baik[1]}")
+        
+        st.markdown("---")
+        st.markdown("### 📜 Simpan Hasil Analisis")
+        st.markdown("Unduh sertifikat ringkasan weton Anda untuk disimpan di HP atau dibagikan ke media sosial.")
+        
+        # --- FITUR DOWNLOAD SERTIFIKAT DIGITAL ---
+        isi_sertifikat = f"""==================================================
+ 🔮 SERTIFIKAT DIGITAL PRIMBON JAWA MODERN 🔮
+==================================================
+
+Nama Pengguna  : Pengunjung Primbon Digital
+Tanggal Lahir  : {tgl_pilih.strftime('%d/%m/%Y')}
+Waktu Lahir    : {waktu}
+
+--------------------------------------------------
+ Hasil Perhitungan Weton:
+--------------------------------------------------
+ HARI LURUH    : {h_weton} ({n_h})
+ PASARAN       : {p_weton} ({n_p})
+ WETON UTAMA   : {weton_lengkap.upper()}
+ TOTAL NEPTU   : {total_neptu}
+
+--------------------------------------------------
+ Nilai Potensi Karakter (Skala 1-100):
+--------------------------------------------------
+ * Kepemimpinan      : {karakter_skor['Kepemimpinan']}/100
+ * Kesabaran         : {karakter_skor['Kesabaran']}/100
+ * Kejujuran         : {karakter_skor['Kejujuran']}/100
+ * Keuangan/Rezeki   : {karakter_skor['Keuangan / Rezeki']}/100
+ * Kecerdasan Emosi  : {karakter_skor['Kecerdasan Emosi']}/100
+
+--------------------------------------------------
+ Garis Panduan Hari:
+--------------------------------------------------
+ ✨ Hari Baik    : {daftar_baik[0]} & {daftar_baik[1]}
+ ⚠️ Hari Nahas   : {daftar_nahas[0]} & {daftar_nahas[1]}
+
+==================================================
+   Aplikasi Dibuat oleh JARWOISME.DEV-APP  
+==================================================
+"""
+        st.download_button(
+            label="📥 Download Sertifikat Weton (.txt)",
+            data=isi_sertifikat,
+            file_name=f"Sertifikat_Weton_{weton_lengkap.replace(' ', '_')}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            type="primary"
+        )
 
 # ================= TAB 2: CEK KECOCOKAN JODOH =================
 with menu[1]:
@@ -185,25 +262,19 @@ with menu[1]:
         waktu_p2 = st.radio("Waktu Lahir Pasangan:", ("Siang", "Malam (Habis Magrib)"), key="jodoh_waktu2")
         
     if st.button("🔮 Hitung Keserasian Jodoh", type="primary", use_container_width=True):
-        # Hitung Weton ke-1
         h1, p1, n_h1, n_p1 = hitung_weton_core(tgl_p1, "Malam" in waktu_p1)
         nep1 = n_h1 + n_p1
         
-        # Hitung Weton ke-2
         h2, p2, n_h2, n_p2 = hitung_weton_core(tgl_p2, "Malam" in waktu_p2)
         nep2 = n_h2 + n_p2
         
-        # Logika Pembagian Jodoh Pakem Sisa 8
         total_neptu_jodoh = nep1 + nep2
         sisa_jodoh = total_neptu_jodoh % 8
         hasil_ramalan = PRIMBON_JODOH[sisa_jodoh]
         
         st.markdown("---")
         st.subheader("💘 Hasil Perhitungan Jodoh")
-        
-        # Tampilkan perbandingan ringkas
         st.info(f"**Weton Anda:** {h1} {p1} (Neptu {nep1})   |   **Weton Pasangan:** {h2} {p2} (Neptu {nep2})")
         
-        # Tampilkan Status Utama
         st.warning(f"### Kategori Hasil: {hasil_ramalan['status']}")
         st.write(hasil_ramalan['arti'])
