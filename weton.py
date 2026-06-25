@@ -335,7 +335,7 @@ with menu[0]:
         """
         
         # Tampilkan komponen sertifikat HTML interaktif di Streamlit
-        st.components.v1.html(html_sertifikat, height=620, scrolling=False)
+        st.components.v1.html(html_sertifikat, height=720, scrolling=True)
 
 # ================= TAB 2: CEK KECOCOKAN JODOH =================
 with menu[1]:
