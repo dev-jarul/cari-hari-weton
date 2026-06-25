@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 st.set_page_config(
     page_title="Prediksi Weton & Watak Lahir", 
     page_icon="🔮", 
-    layout="vertical"
+    layout="centered"
 )
 
 # Judul Aplikasi Utama
